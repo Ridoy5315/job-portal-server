@@ -9,7 +9,7 @@ const port = process.env.PORT || 3000;
 
 app.use(cors({
   origin: [
-    'http://localhost:5175', 
+    'http://localhost:5173',
     'https://job-portal-27e9b.web.app',
     'https://job-portal-27e9b.firebaseapp.com',
     ],
@@ -101,11 +101,36 @@ async function run() {
 
     app.get("/job", async (req, res) => {
       const email = req.query.email;
+      const sort = req.query?.sort;
+      const search = req.query?.search;
+      const min = req.query?.min;
+      const max = req.query?.max;
+      let sortQuery = {};
       let query = {};
       if (email) {
         query = { hr_email: email };
       }
-      const cursor = jobsCollection.find(query);
+      if(sort == "true"){
+        sortQuery = {
+          "salaryRange.min": -1
+        }
+      }
+      if(search){
+        query.title = { $regex: search, $options: "i"}
+      }
+      if(min && max){
+        query= {
+          ...query,
+          "salaryRange.min": {
+            $gte: parseInt(min)
+          },
+          "salaryRange.max": {
+            $lte: parseInt(max)
+          },
+        };
+      }
+      
+      const cursor = jobsCollection.find(query).sort(sortQuery);
       const result = await cursor.toArray();
       res.send(result);
     });
@@ -137,7 +162,7 @@ async function run() {
       }
       res.send(result);
     });
-
+    
     app.post("/job-applications", async (req, res) => {
       const application = req.body;
       const result = await jobApplicationCollection.insertOne(application);
